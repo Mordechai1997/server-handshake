@@ -7,7 +7,9 @@ router.post('/login', controllerSignin.signin)
 router.post('/signup', controllerSignin.signup)
 router.get('/reset-password-email', controllerSignin.resetPasswordEmail)
 router.post('/update-password', controllerSignin.updatePassword)
-router.get('/private', controllerSignin.isAuth)
+router.get('/getEmailUserByMemberId', controllerSignin.getEmailUserByMemberId)
+router.get('/auth', controllerSignin.isAuth)
+
 
 
 

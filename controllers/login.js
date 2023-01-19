@@ -12,6 +12,7 @@ var transporter = nodemailer.createTransport({
     }
 });
 
+
 exports.signin = async (req, res) => {
     try {
         const user = await User.findOne({
@@ -29,7 +30,8 @@ exports.signin = async (req, res) => {
         const userToken = jwt.sign({ userId: user.userId }, `${process.env.PASSWORD_EMAIL}`, { expiresIn: '1h' });
         await User.update({ userToken: userToken }, { where: { userId: user.userId } });
         res.cookie('token', userToken, { httpOnly: false, maxAge: 1000 * 60 * 60 });
-        return res.status(200).send({ message: "Log in" })
+        res.status(200).send({ message: "Log in" })
+
     } catch (err) {
         console.log(err);
         res.status(500).send({ message: "Somthing went worng" });
@@ -115,7 +117,6 @@ exports.resetPasswordEmail = (req, res, next) => {
 }
 exports.updatePassword = (req, res, next) => {
     var { token, password } = req.body;
-    console.log(token)
 
     User.findOne({
         where: {
@@ -150,21 +151,63 @@ exports.updatePassword = (req, res, next) => {
         })
     })
 }
-exports.isAuth = (req, res, next) => {
-    const authHeader = req.get("Authorization");
-    if (!authHeader) {
-        return res.status(401).json({ message: 'not authenticated' });
-    };
-    const token = authHeader.split(' ')[1];
-    let decodedToken;
+exports.isAuth = async (req, res, next) => {
     try {
-        decodedToken = jwt.verify(token, 'secret');
-    } catch (err) {
-        return res.status(500).json({ message: err.message || 'could not decode the token' });
-    };
-    if (!decodedToken) {
-        res.status(401).json({ message: 'unauthorized' });
-    } else {
-        res.status(200).json({ message: 'here is your resource' });
-    };
+        const cookie = req.cookies.token;
+        if (!cookie) {
+            res.status(403).send({ message: 'auth faild' })
+        }
+        else {
+            const isVarify = jwt.verify(cookie, process.env.PASSWORD_EMAIL);
+            if (isVarify.userId) {
+                res.status(200).send({
+                    message: 'access exist', userInfo: await User.findOne({
+                        where: {
+                            userId: isVarify.userId,
+                        }
+                    })
+                });
+            }
+        }
+    }
+    catch (err) {
+        res.status(405).send(err)
+    }
+
 };
+exports.isAuthControllers = (req, res, next) => {
+    try {
+        const cookie = req.cookies.token;
+        if (!cookie) {
+            res.status(401).send({ message: "not auth" });
+        }
+        else {
+            const isVarify = jwt.verify(cookie, process.env.PASSWORD_EMAIL);
+            if (isVarify.userId) {
+                next();
+            }
+        }
+    } catch (err) {
+        res.status(500).send({ message: "Somthing went worng in isAuth" });
+
+    }
+
+
+}
+exports.getEmailUserByMemberId =async (req, res, next) => {
+    try {
+        var { id, password } = req.query;
+
+        const user =await User.findOne({
+            where: {
+                userId: id
+            }
+        });
+
+       return res.status(200).json({email: user.email, name: user.username});
+    } catch (err) {
+       return res.status(500).send({ message: "Somthing went worng in isAuth" });
+
+    }
+
+}
